@@ -31,26 +31,43 @@ st.sidebar.header("DL Model Config")
 # model options
 task_type = st.sidebar.selectbox(
     "Select Task",
-    ["Detection"]
+    ["Detection", "Classification", "Segmentation", "Pose"]
 )
 
 model_type = None
+model_path = ""
+
 if task_type == "Detection":
     model_type = st.sidebar.selectbox(
         "Select Model",
         config.DETECTION_MODEL_LIST
     )
+    model_path = Path(config.DETECTION_MODEL_DIR, str(model_type))
+elif task_type == "Classification":
+    model_type = st.sidebar.selectbox(
+        "Select Model",
+        config.CLASSIFICATION_MODEL_LIST
+    )
+    model_path = Path(config.CLASSIFICATION_MODEL_DIR, str(model_type))
+elif task_type == "Segmentation":
+    model_type = st.sidebar.selectbox(
+        "Select Model",
+        config.SEGMENTATION_MODEL_LIST
+    )
+    model_path = Path(config.SEGMENTATION_MODEL_DIR, str(model_type))
+elif task_type == "Pose":
+    model_type = st.sidebar.selectbox(
+        "Select Model",
+        config.POSE_MODEL_LIST
+    )
+    model_path = Path(config.POSE_MODEL_DIR, str(model_type))
 else:
-    st.error("Currently only 'Detection' function is implemented")
+    st.error("Currently only 'Detection/Classification/Segmentation/Pose' function are implemented")
+    st.error("Please Select Model in Sidebar")
+
 
 confidence = float(st.sidebar.slider(
     "Select Model Confidence", 30, 100, 50)) / 100
-
-model_path = ""
-if model_type:
-    model_path = Path(config.DETECTION_MODEL_DIR, str(model_type))
-else:
-    st.error("Please Select Model in Sidebar")
 
 # load pretrained DL model
 try:
@@ -74,3 +91,5 @@ elif source_selectbox == config.SOURCES_LIST[2]: # Webcam
     infer_uploaded_webcam(confidence, model)
 else:
     st.error("Currently only 'Image' and 'Video' source are implemented")
+
+# define class to be processed in model

@@ -15,20 +15,28 @@ from PIL import Image
 import tempfile
 import config
 
-def _display_detected_frames(conf, model, st_count, st_frame, image):
+classes = config.CLASSES
+
+def _display_detected_frames(conf, model, st_count, st_frame, image, is_display_tracking=None, tracker=None):
     """
     Display the detected objects on a video frame using the YOLOv8 model.
     :param conf (float): Confidence threshold for object detection.
     :param model (YOLOv8): An instance of the `YOLOv8` class containing the YOLOv8 model.
     :param st_frame (Streamlit object): A Streamlit object to display the detected video.
     :param image (numpy array): A numpy array representing the video frame.
+    :param is_display_tracking (bool): A flag indicating whether to display object tracking (default=None).
     :return: None
     """
     # Resize the image to a standard size
-    #image = cv2.resize(image, (720, int(720 * (9 / 16))))
+    image = cv2.resize(image, (720, int(720 * (9 / 16))))
+    classes = 0
 
-    # Predict the objects in the image using YOLOv8 model
-    res = model.predict(image, conf=conf)
+    # Predict the objects in the image using YOLOv8 model, and tracking if specified
+    if is_display_tracking:
+        res = model.track(image, conf=conf, persist=True, tracker=tracker, classes=classes)
+    else:
+        # Predict the objects in the image using the YOLOv8 model
+        res = model.predict(image, conf=conf, classes=classes)
     
     inText = 'Vehicle In'
     outText = 'Vehicle Out'
@@ -63,6 +71,21 @@ def load_model(model_path):
     model = YOLO(model_path)
     return model
 
+def display_tracker_options():
+    """
+    A function that displays options for a tracker.
+
+    Returns:
+        Tuple[bool, Optional[str]]: A tuple containing a boolean value indicating 
+        whether to display the tracker or not, and an optional string representing 
+        the type of tracker to display.
+    """
+    display_tracker = st.radio("Display Tracker", ('Yes', 'No'))
+    is_display_tracker = True if display_tracker == 'Yes' else False
+    if is_display_tracker:
+        tracker_type = st.radio("Tracker", ("bytetrack.yaml", "botsort.yaml"))
+        return is_display_tracker, tracker_type
+    return is_display_tracker, None
 
 def infer_uploaded_image(conf, model):
     """
@@ -92,9 +115,10 @@ def infer_uploaded_image(conf, model):
         if st.button("Execution"):
             with st.spinner("Running..."):
                 res = model.predict(uploaded_image,
-                                    conf=conf)
+                                    conf=conf, classes=classes)
                 boxes = res[0].boxes
                 res_plotted = res[0].plot()[:, :, ::-1]
+                print("classes=", classes)
 
                 with col2:
                     st.image(res_plotted,
@@ -120,6 +144,8 @@ def infer_uploaded_video(conf, model):
         label="Choose a video..."
     )
 
+    is_display_tracker, tracker = display_tracker_options()
+
     if source_video:
         st.video(source_video)
 
@@ -142,7 +168,9 @@ def infer_uploaded_video(conf, model):
                                                      model,
                                                      st_count,
                                                      st_frame,
-                                                     image
+                                                     image,
+                                                     is_display_tracker,
+                                                     tracker
                                                      )
                         else:
                             vid_cap.release()
@@ -158,6 +186,8 @@ def infer_uploaded_webcam(conf, model):
     :param model: An instance of the `YOLOv8` class containing the YOLOv8 model.
     :return: None
     """
+    is_display_tracker, tracker = display_tracker_options()
+
     try:
         flag = st.button(
             label="Stop running"
@@ -173,7 +203,9 @@ def infer_uploaded_webcam(conf, model):
                     model,
                     st_count,
                     st_frame,
-                    image
+                    image,
+                    is_display_tracker,
+                    tracker
                 )
             else:
                 vid_cap.release()
